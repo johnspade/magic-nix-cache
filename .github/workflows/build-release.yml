@@ -1,0 +1,28 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.6-fix172)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Build magic-nix-cache closure
+        run: |
+          nix build .#packages.x86_64-linux.default -L --fallback
+          nix-store --export $(nix-store -qR ./result) | xz -9 > magic-nix-cache.closure.xz
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: magic-nix-cache.closure.xz
+          fail_on_unmatched_files: true
